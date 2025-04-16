@@ -1,0 +1,35 @@
+# Ignorar archivos y carpetas específicos
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entorno virtual (venv, .venv, env, etc.)
+venv/
+.venv/
+env/
+ENV/
+
+# Archivos de desarrollo y IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos de configuración local
+.env
+*.env
+.env.local
+
+# Logs y caché
+*.log
+*.cache
+.pytest_cache/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos generados por el usuario
+*.egg-info/
+dist/
+build/

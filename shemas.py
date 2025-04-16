@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from datetime import date
 from typing import List,Optional
 #Creamos el la clase de equipo con baseModel para llamar todos los datos 
+
+
 class Jugador(BaseModel):
     documento: int
     usuario: str
@@ -70,7 +72,7 @@ class EquipoSchema(BaseModel):
 
 # Esquema para Implementos
 class ImplementosSchema(BaseModel):
-    implementos: int
+    implementos: Optional[int] = None 
     cantidad: int
     descripcion: str
     nombre: str
@@ -133,7 +135,7 @@ class EncuentroBase2(BaseModel):
 
 
 class EstadisticasBase(BaseModel):
-    id:int
+    id:Optional[int] = None 
     asistencias: int
     corners: int
     encuentros_encuentro_id:int

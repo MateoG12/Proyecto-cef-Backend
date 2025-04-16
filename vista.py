@@ -1,6 +1,12 @@
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.header import Header
 import os
 import bcrypt
-from datetime import date, datetime
+from shemas import BaseModel
+from datetime import date, datetime ,timedelta
 from typing import List,Optional
 from fastapi import FastAPI ,Query,HTTPException,Depends,status ,Form ,File ,UploadFile
 from sqlalchemy.orm import Session,joinedload
@@ -55,21 +61,163 @@ async def consultar_documentos_torneo(torneo_id: int, bd: Session = Depends(get_
 #////////////////////////////////////////////////////////////////////////////////////////////////////
 #////////////////////////////////////////////////////////////////////////////////////////////////////
 #////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 verification_code = "0000"
-@app.post("/verify_code")
-async def verify_code(data: VerificationCode):
+@app.post("/verify_code2")
+async def verify_code2(data: VerificationCode):
     if data.code == verification_code:
         return {"mensaje": "Código verificado correctamente"}
     else:
         raise HTTPException(status_code=400, detail="Código incorrecto")
+
+
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USERNAME = "mateoarenasgeandre@gmail.com"
+SMTP_PASSWORD = "jbvwyhkqkcoyvkhr"  # Usa contraseña de aplicación
+
+# Almacenamiento temporal de códigos
+verification_data = {}
+
+class VerificationRequest(BaseModel):
+    email: str
+
+class VerificationCode(BaseModel):
+    code: str
+
+def generate_verification_code():
+    return ''.join(secrets.choice('0123456789') for _ in range(6))
+
+def send_verification_email(email: str, code: str):
+    try:
+        # Crear mensaje MIME multipart (HTML + texto plano)
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "¡Bienvenido al Club Deportivo Independiente C.E.F!"
+        msg['From'] = SMTP_USERNAME
+        msg['To'] = email
+        
+        # Texto plano para clientes de email simples
+        text = f"""
+        Bienvenido al Club Deportivo Independiente C.E.F!
+        
+        Tu código de verificación es: {code}
+        
+        Este código expirará en 24 horas.
+        
+        © 2024 Club Deportivo Independiente C.E.F
+        """
+        
+        # Versión HTML con diseño profesional
+        html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ text-align: center; padding: 20px 0; }}
+                .logo {{ max-width: 150px; height: auto; }}
+                .code {{ 
+                    background: #f4f4f4; 
+                    padding: 10px 15px; 
+                    font-size: 24px; 
+                    letter-spacing: 3px;
+                    text-align: center;
+                    margin: 20px 0;
+                    border-radius: 5px;
+                }}
+                .footer {{ 
+                    margin-top: 30px; 
+                    text-align: center; 
+                    font-size: 12px; 
+                    color: #777;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <!-- Reemplaza con la URL real de tu logo -->
+                    <img src="file:///E:/SENA/.QUINTO%20TRIMESTRE/Nur%20Derly/VueJS%20frame/proyectopython/src/components/icons/WhatsApp_Image_2024-08-23_at_9.04.20_AM-removebg-preview.png" alt="Club Deportivo Independiente" class="logo">
+                    <h1>¡Bienvenido al Club!</h1>
+                </div>
+                
+                <p>Gracias por registrarte en el Club Deportivo Independiente C.E.F.</p>
+                <p>Por favor utiliza el siguiente código para verificar tu cuenta:</p>
+                
+                <div class="code">{code}</div>
+                
+                <p>Este código es válido por 24 horas.</p>
+                
+                <div class="footer">
+                    <p>© 2024 Club Deportivo Independiente C.E.F</p>
+                    <p>Si no solicitaste este código, por favor ignora este mensaje.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Adjuntar ambas versiones al mensaje
+        part1 = MIMEText(text, 'plain')
+        part2 = MIMEText(html, 'html')
+        
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        # Enviar el correo
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+        return True
+        
+    except smtplib.SMTPAuthenticationError:
+        print("Error: Credenciales incorrectas. Verifica usuario y contraseña de aplicación")
+        return False
+    except Exception as e:
+        print(f"Error enviando correo: {type(e).__name__}: {str(e)}")
+        return False
+
+@app.post("/request_verification")
+async def request_verification(data: VerificationRequest):
+    # Generar código
+    code = generate_verification_code()
+    expires_at = datetime.now() + timedelta(hours=24)
     
-verification_code2 = "0001"
-@app.post("/verify_code2")
-async def verify_code2(data: VerificationCode2):
-    if data.code2 == verification_code2:
-        return {"mensaje": "Código verificado correctamente"}
-    else:
-        raise HTTPException(status_code=400, detail="Código incorrecto")
+    verification_data[code] = {
+        "email": data.email,
+        "expires_at": expires_at,
+        "used": False
+    }
+    
+    # Enviar email con el nuevo diseño
+    if send_verification_email(data.email, code):
+        return {"message": "Código enviado"}
+    raise HTTPException(status_code=500, detail="Error enviando código")
+
+@app.post("/verify_code")
+async def verify_code(data: VerificationCode):
+    if data.code not in verification_data:
+        raise HTTPException(status_code=400, detail="Código inválido")
+    
+    code_data = verification_data[data.code]
+    
+    if datetime.now() > code_data["expires_at"]:
+        del verification_data[data.code]
+        raise HTTPException(status_code=400, detail="Código expirado")
+    
+    if code_data["used"]:
+        raise HTTPException(status_code=400, detail="Código ya utilizado")
+    
+    # Marcar como usado
+    verification_data[data.code]["used"] = True
+    
+    return {
+        "message": "Código verificado correctamente",
+        "email": code_data["email"]
+    }
 
 
 # Codigo para Jugador 
@@ -164,25 +312,41 @@ async def registrar_equipo(
 app.mount("/micarpetaimg", StaticFiles(directory="micarpetaimg"), name="imagenes")
 
 
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+class JugadorUpdate(BaseModel):
+    eps: str | None = None
+    telefono: str | None = None
+    email: str | None = None
+    foto: str | None = None
+    nombre_acudiente: str | None = None
+    telefono_acudiente: str | None = None
+    email_acudiente: str | None = None
+    categoria: str | None = None
+
 @app.put("/ActualizarJ/{documento}", response_model=JugadoresSchema)
-async def actualizar_jugador(documento: str, modelojugador: JugadoresSchema, bd: Session = Depends(get_db)):
+async def actualizar_jugador(
+    documento: str, 
+    modelojugador: JugadorUpdate,  # Usamos el nuevo modelo con campos opcionales
+    bd: Session = Depends(get_db)
+):
     try:
-        # Buscar el jugador por documento
         jugador_existente = bd.query(JugadoresModel).filter(JugadoresModel.documento == documento).first()
         if not jugador_existente:
             raise HTTPException(status_code=404, detail="Jugador no encontrado")
 
-        # Actualizar los campos necesarios
-        for key, value in modelojugador.dict().items():
+        # Actualizar solo los campos enviados (ignorando los no proporcionados)
+        update_data = modelojugador.dict(exclude_unset=True)
+        for key, value in update_data.items():
             setattr(jugador_existente, key, value)
 
-        # Guardar los cambios en la base de datos
         bd.commit()
         bd.refresh(jugador_existente)
         return jugador_existente
 
     except Exception as e:
-        bd.rollback()  # Asegúrate de hacer un rollback en caso de error
+        bd.rollback()
         raise HTTPException(status_code=422, detail=f"Error al actualizar: {str(e)}")
 
 @app.delete("/EliminarJ/{documento}", response_model=dict)
@@ -486,7 +650,7 @@ async def insertar_implemento(
     bd: Session = Depends(get_db)
 ):
     nuevo_implemento = Implementos(
-        implementos=implemento.implementos,
+        # implementos=implemento.implementos,
         cantidad=implemento.cantidad,
         descripcion=implemento.descripcion,
         nombre=implemento.nombre
@@ -815,7 +979,7 @@ async def consultar_equipo_Inscripcion_por_equipoid(
     relaciones = bd.query(EquipoInscripcion).filter(EquipoInscripcion.equipoid == equipoid).all()
 
     if not relaciones:
-        raise HTTPException(status_code=404, detail="No se encontraron usuarios para este equipo.")
+        raise HTTPException()
 
     return relaciones
 
@@ -1086,7 +1250,7 @@ async def eliminar_encuentro(encuentro_id: int, bd: Session = Depends(get_db)):
 @app.post("/insertarEstadisticas/{encuentro_id}", response_model=EstadisticasBase)
 async def insertar_estadisticas(encuentro_id: int, estadisticas: EstadisticasBase, bd: Session = Depends(get_db)):
     nuevo_estadisticas = Estadisticas(
-        id=estadisticas.id,
+        # id=estadisticas.id,
         encuentros_encuentro_id=encuentro_id,
         asistencias=estadisticas.asistencias,
         corners=estadisticas.corners,

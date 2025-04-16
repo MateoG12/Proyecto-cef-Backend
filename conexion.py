@@ -2,10 +2,17 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+# docker
+# URL_DB="mysql+mysqlconnector://root:0000@host.docker.internal:3306/cef1"
 
-#llamamos url de la base de datos creada en sql
-# URL_DB="mysql+mysqlconnector://root:0000@localhost:3306/cef1"
-URL_DB="mysql+mysqlconnector://admin_adso:1@127.0.0.1:3366/cef1"
+#sql
+#URL_DB="mysql+mysqlconnector://root:0000@localhost:3306/cef1"
+
+#sql daniela
+URL_DB="mysql+mysqlconnector://root:Mondangi707@localhost:3306/cef1"
+
+# Mariadb
+# URL_DB="mysql+mysqlconnector://admin_adso:1@127.0.0.1:3366/cef1"
 crear=create_engine(URL_DB)
 sessionlocal=sessionmaker(autocommit=False,autoflush=False,bind=crear)
 base=declarative_base()
