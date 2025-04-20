@@ -7,14 +7,14 @@ from sqlalchemy.orm import sessionmaker
 #URL_DB="mysql+mysqlconnector://root:aFxlxpAZVRUFRtPefCFcNjrkfVTFNitf@gondola.proxy.rlwy.net:41398/cef1"
 
 #railway interna
-URL_DB="mysql+mysqlconnector://root:aFxlxpAZVRUFRtPefCFcNjrkfVTFNitf@mysql.railway.internal:3306/cef1"
+# URL_DB="mysql+mysqlconnector://root:aFxlxpAZVRUFRtPefCFcNjrkfVTFNitf@mysql.railway.internal:3306/cef1"
 
 
 # docker
 # URL_DB="mysql+mysqlconnector://root:0000@host.docker.internal:3306/cef1"
 
 #sql
-#URL_DB="mysql+mysqlconnector://root:0000@localhost:3306/cef1"
+URL_DB="mysql+mysqlconnector://root:0000@localhost:3306/cef1"
 
 #sql daniela
 #URL_DB="mysql+mysqlconnector://root:Mondangi707@localhost:3306/cef1"
